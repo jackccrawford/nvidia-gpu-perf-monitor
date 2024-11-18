@@ -39,6 +39,9 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Emoji backup file - used to preserve emojis during README edits
+README.emoji.md
+
 # IDEs and editors
 .idea/
 .vscode/

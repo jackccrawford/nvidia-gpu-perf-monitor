@@ -48,6 +48,13 @@ We use GitHub issues to track public bugs. Report a bug by [opening a new issue]
 5. Update documentation
 6. Submit a pull request
 
+## 📝 Documentation Guidelines
+
+### README Maintenance
+- The main README.md uses emojis to enhance readability
+- A local README.emoji.md file is maintained as a backup for emoji preservation
+- When editing the README, reference README.emoji.md to restore any emojis that may be lost during the edit process
+
 ### Setting Up Development Environment
 
 ```bash

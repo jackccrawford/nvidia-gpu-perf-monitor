@@ -66,7 +66,7 @@ Key Design Principles:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/nvidia-gpu-monitor.git
+   git clone <a href="https://github.com/jackccrawford/nvidia-gpu-perf-monitor.git" target="_blank">https://github.com/jackccrawford/nvidia-gpu-perf-monitor.git</a>
    ```
 
 2. Install backend dependencies:
@@ -139,17 +139,17 @@ Color-coded temperature ranges for intuitive monitoring:
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the <a href="LICENSE" target="_blank">LICENSE</a> file for details.
 
 ## 🙏 Acknowledgments
 
 - NVIDIA for nvidia-smi toolkit
-- [gpu-burn](https://github.com/wilicc/gpu-burn) for stress testing
-- [React](https://reactjs.org) for frontend framework
-- [Flask](https://flask.palletsprojects.com) for backend framework
-- Icons by [Heroicons](https://heroicons.com) and [Phosphor](https://phosphoricons.com)
+- <a href="https://github.com/wilicc/gpu-burn" target="_blank">gpu-burn</a> for stress testing
+- <a href="https://reactjs.org" target="_blank">React</a> for frontend framework
+- <a href="https://flask.palletsprojects.com" target="_blank">Flask</a> for backend framework
+- Icons by <a href="https://heroicons.com" target="_blank">Heroicons</a> and <a href="https://phosphoricons.com" target="_blank">Phosphor</a>
 
 ---
 
 <p align="center">Made with ❤️ for the GPU community</p>
-<p align="center">Developed with assistance by <a href="https://www.codeium.com">Codeium</a> Windsurf</p>
+<p align="center">Developed with assistance by <a href="https://www.codeium.com" target="_blank">Codeium</a> Windsurf</p>
