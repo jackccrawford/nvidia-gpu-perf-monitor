@@ -1,5 +1,50 @@
 #!/usr/bin/env python3
 
+"""
+NVIDIA GPU Monitoring Service
+
+This Flask-based service provides real-time GPU metrics through a RESTful API.
+It monitors NVIDIA GPUs using the nvidia-smi tool and exposes the following endpoints:
+
+Endpoints:
+    GET /api/gpu-stats - Returns current GPU statistics including:
+        - Temperature, fan speed, and utilization metrics
+        - Memory usage and power consumption
+        - Process information for each GPU
+        - Temperature history and trends
+        - Peak temperature records
+        - GPU burn test metrics (if applicable)
+
+    POST /api/reset-peaks - Resets the recorded peak temperatures
+
+Security:
+    - CORS is enabled to allow cross-origin requests from the frontend
+    - No authentication required (intended for local network use only)
+
+Dependencies:
+    - nvidia-smi command-line tool
+    - NVIDIA drivers properly installed
+    - Flask and flask-cors packages
+
+Data Structures:
+    temperature_history : dict
+        Keys: GPU index (int)
+        Values: deque of (timestamp, temperature) tuples
+        Purpose: Tracks temperature changes over time for trend analysis
+        Max Length: 40 entries (10 seconds at 250ms intervals)
+
+    peak_temperatures : dict
+        Keys: GPU index (int)
+        Values: highest recorded temperature (float)
+        Purpose: Maintains high-water marks for each GPU
+        Reset: Via /api/reset-peaks endpoint
+
+    gpu_burn_metrics : dict
+        Keys: 'start_time', 'errors_detected', 'total_time'
+        Purpose: Tracks GPU stress test metrics
+        Reset: Errors reset via /api/reset-peaks endpoint
+"""
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 import subprocess
@@ -13,12 +58,16 @@ import time
 app = Flask(__name__)
 CORS(app)
 
-# Store temperature history for each GPU
-# Format: {gpu_index: deque([(timestamp, temp), ...], maxlen=3600)}
+# Temperature history for each GPU
+# Format: {gpu_index: deque([(timestamp, temp), ...], maxlen=40)}
 temperature_history = {}
-# Store peak temperatures
+
+# Peak temperature tracking
+# Format: {gpu_index: highest_recorded_temperature}
 peak_temperatures = {}
-# Store gpu-burn specific metrics
+
+# GPU burn test metrics
+# Format: {start_time: float, errors_detected: int, total_time: float}
 gpu_burn_metrics = {
     'start_time': None,
     'errors_detected': 0,
@@ -26,6 +75,18 @@ gpu_burn_metrics = {
 }
 
 def get_nvidia_info():
+    """
+    Retrieves NVIDIA driver and CUDA version information.
+
+    Uses nvidia-smi to query the system for driver and CUDA versions.
+    Handles potential errors gracefully by returning "Unknown" for missing information.
+
+    Returns:
+        dict: A dictionary containing:
+            - driver_version (str): NVIDIA driver version (e.g., "535.183.01")
+            - cuda_version (str): CUDA version (e.g., "12.2")
+                                Returns "Unknown" if information cannot be retrieved
+    """
     try:
         # Get NVIDIA driver version
         driver_cmd = subprocess.run(['nvidia-smi', '--query-gpu=driver_version', '--format=csv,noheader,nounits'], 
@@ -52,6 +113,35 @@ def get_nvidia_info():
         }
 
 def parse_gpu_info():
+    """
+    Collects and processes comprehensive GPU information.
+
+    This function:
+    1. Retrieves driver/CUDA versions
+    2. Collects detailed GPU metrics (temperature, memory, utilization, etc.)
+    3. Updates temperature history and peak records
+    4. Calculates temperature change rates
+    5. Formats data for frontend consumption
+
+    GPU Metrics Collected:
+        - Index and Name
+        - Fan Speed (%)
+        - Power Usage (W)
+        - Memory Usage (MiB)
+        - GPU Utilization (%)
+        - Temperature (°C)
+        - Compute Mode
+        - Temperature History
+        - Peak Temperature
+
+    Returns:
+        dict: A dictionary containing:
+            - gpus: List of GPU information dictionaries
+            - nvidia_info: Driver and CUDA versions
+            - processes: List of running compute processes (intentionally empty)
+            - gpu_burn_metrics: Stress test metrics
+            - success: Boolean indicating successful data collection
+    """
     try:
         nvidia_info = get_nvidia_info()
         
@@ -189,10 +279,38 @@ def parse_gpu_info():
 
 @app.route('/api/gpu-stats')
 def get_gpu_stats():
+    """
+    Flask endpoint that returns current GPU statistics.
+
+    This endpoint:
+    1. Collects current GPU metrics via parse_gpu_info()
+    2. Returns the data in JSON format
+    3. Handles CORS automatically via flask-cors
+
+    Returns:
+        Response: JSON-formatted GPU statistics including:
+            - List of GPU information
+            - NVIDIA driver/CUDA versions
+            - Temperature histories
+            - Peak temperatures
+            - GPU burn metrics
+    """
     return jsonify(parse_gpu_info())
 
-@app.route('/api/reset-peaks')
+@app.route('/api/reset-peaks', methods=['POST'])
 def reset_peaks():
+    """
+    Flask endpoint that resets peak temperature records and error counts.
+
+    This endpoint:
+    1. Clears the peak_temperatures dictionary
+    2. Resets GPU burn error counter
+    3. Returns success confirmation
+
+    Returns:
+        Response: JSON confirmation of reset
+            - success: True if reset completed
+    """
     peak_temperatures.clear()
     gpu_burn_metrics['errors_detected'] = 0
     return jsonify({'success': True})
