@@ -1,15 +1,15 @@
-# 🎮 NVIDIA GPU Performance Monitor
+# NVIDIA GPU Performance Monitor
 
 > "Information should not be displayed all at once; let people gradually become familiar with it." - Edward Tufte
 
 Tired of playing "Find the Important Number" in your terminal while your ML model trains? Watching your GPU temperature shouldn't feel like decoding the Matrix. 
 
 Do you find yourself:
-- 👀 Constantly switching between terminal windows?
-- 🔍 Squinting at rapidly changing numbers?
-- 🤯 Missing critical spikes in GPU usage?
-- 🌡️ Wondering if that temperature is actually concerning?
-- 💭 Spending mental energy parsing dense data when you should be focusing on your work?
+- Constantly switching between terminal windows?
+- Squinting at rapidly changing numbers?
+- Missing critical spikes in GPU usage?
+- Wondering if that temperature is actually concerning?
+- Spending mental energy parsing dense data when you should be focusing on your work?
 
 We've reimagined GPU monitoring with human-centered design principles. Instead of parsing dense terminal output, our dashboard leverages intuitive visual affordances - color gradients that immediately signal temperature states, progress bars that show memory usage at a glance, and trend indicators that make pattern recognition effortless.
 
@@ -32,41 +32,41 @@ Key Design Principles:
 ![Python](https://img.shields.io/badge/python-3.8+-yellow)
 ![Flask](https://img.shields.io/badge/flask-2.0.0-black)
 
-## 🔄 From Terminal to Visual Intelligence
+## From Terminal to Visual Intelligence
 
-### 📊 The Old Way: Dense Terminal Output
+### The Old Way: Dense Terminal Output
 ![Traditional nvidia-smi](images/nvidia-smi.png)
 *Traditional nvidia-smi command line output - dense numbers requiring constant cognitive processing*
 
-### 📈 Real-world Usage Examples
+### Real-world Usage Examples
 
-#### 🤖 Machine Learning Workload Monitoring
+#### Machine Learning Workload Monitoring
 ![Ollama Running](images/Ollama-Mistral-Small.png)
 *Dashboard showing Ollama running the Mistral-Small model - clear resource utilization*
 
-#### 🔥 Stress Test Monitoring
+#### Stress Test Monitoring
 ![GPU Burn Test](images/gpu-burn-danger-zone.png)
 *Intensive GPU stress testing with gpu-burn - immediate visual alerts*
 
-#### 📱 Mobile-Optimized View
+#### Mobile-Optimized View
 ![Mobile Dark Mode](images/DarkMode-Mobile.png)
 
 *Responsive design automatically adapts to any screen size*
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **📊 Frontend**: React 18, TypeScript, Vite
-- **📈 Backend**: Python, Flask
-- **🔧 System Tools**:
+- Frontend: React 18, TypeScript, Vite
+- Backend: Python, Flask
+- System Tools:
   - nvidia-smi
   - gpu-burn
   - CUDA Toolkit
 
-## 📦 Installation
+## Installation
 
 1. Clone the repository:
    ```bash
-   git clone <a href="https://github.com/jackccrawford/nvidia-gpu-perf-monitor.git" target="_blank">https://github.com/jackccrawford/nvidia-gpu-perf-monitor.git</a>
+   git clone https://github.com/jackccrawford/nvidia-gpu-perf-monitor.git
    ```
 
 2. Install backend dependencies:
@@ -81,21 +81,33 @@ Key Design Principles:
    npm install
    ```
 
-4. Start the backend server:
+4. Start the application:
    ```bash
+   ./restart.sh
+   ```
+   
+   The `restart.sh` script handles:
+   - Stopping any existing instances of the frontend and backend services
+   - Starting the Flask backend server
+   - Starting the React frontend development server
+   - Ensuring proper startup sequence and port availability
+
+   > Pro Tip: Always use `restart.sh` to start/restart the application. It ensures clean startup and proper service coordination.
+
+   If you need to start services manually (not recommended):
+   ```bash
+   # Backend
    cd backend
    python gpu_service.py
-   ```
 
-5. Start development server:
-   ```bash
+   # Frontend (in a new terminal)
    cd frontend
    npm run dev
    ```
 
-## 🎯 Usage Examples
+## Usage Examples
 
-### 🔍 Monitoring Machine Learning Workloads
+### Monitoring Machine Learning Workloads
 ```python
 # Run your ML training
 python train.py --model large --epochs 100
@@ -106,7 +118,7 @@ Monitor in real-time:
 - Temperature trends
 - Process-specific metrics
 
-### 🔥 Stress Testing
+### Stress Testing
 ```bash
 # Run gpu-burn
 ./gpu-burn 60  # 1 minute stress test - watch closely!
@@ -117,19 +129,19 @@ Monitor in dashboard:
 - Duration tracking
 - Performance metrics
 
- ⚠️ **CAUTION**: Never run stress tests for extended periods. This can damage your GPU!
+ CAUTION: Never run stress tests for extended periods. This can damage your GPU!
 
-## 🌡️ Temperature Monitoring
+## Temperature Monitoring
 
 Color-coded temperature ranges for intuitive monitoring:
-- 🔴 Red (≥85°C): Danger zone
-- 🟠 Orange (80-84°C): Warning
-- 🟡 Yellow (70-79°C): Normal gaming temp
-- 💚 Green (65-69°C): Ideal temperature
-- 💙 Blue (50-64°C): Cool
-- 🟦 Indigo (<50°C): Very cool
+- Red (≥85°C): Danger zone
+- Orange (80-84°C): Warning
+- Yellow (70-79°C): Normal gaming temp
+- Green (65-69°C): Ideal temperature
+- Blue (50-64°C): Cool
+- Indigo (<50°C): Very cool
 
-## 🔒 Security Notes
+## Security Notes
 
 - No sensitive data collection
 - Local-only operation
@@ -137,19 +149,19 @@ Color-coded temperature ranges for intuitive monitoring:
 - Safe subprocess execution
 - Error handling for all operations
 
-## 📝 License
+## License
 
-This project is licensed under the MIT License - see the <a href="LICENSE" target="_blank">LICENSE</a> file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - NVIDIA for nvidia-smi toolkit
-- <a href="https://github.com/wilicc/gpu-burn" target="_blank">gpu-burn</a> for stress testing
-- <a href="https://reactjs.org" target="_blank">React</a> for frontend framework
-- <a href="https://flask.palletsprojects.com" target="_blank">Flask</a> for backend framework
-- Icons by <a href="https://heroicons.com" target="_blank">Heroicons</a> and <a href="https://phosphoricons.com" target="_blank">Phosphor</a>
+- gpu-burn for stress testing
+- React for frontend framework
+- Flask for backend framework
+- Icons by Heroicons and Phosphor
 
 ---
 
-<p align="center">Made with ❤️ for the GPU community</p>
-<p align="center">Developed with assistance by <a href="https://www.codeium.com" target="_blank">Codeium</a> Windsurf</p>
+<p align="center">Made with for the GPU community</p>
+<p align="center">Developed with assistance by Codeium Windsurf</p>

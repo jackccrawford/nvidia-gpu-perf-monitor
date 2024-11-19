@@ -1,44 +1,89 @@
 import { useState, useEffect } from 'react'
 
+/**
+ * Represents comprehensive information about a single NVIDIA GPU
+ * @interface GPUInfo
+ */
 interface GPUInfo {
+  /** Unique index of the GPU in the system */
   index: number
+  /** Full name/model of the GPU */
   name: string
+  /** Current fan speed as a percentage (0-100) */
   fan_speed: number
+  /** Current power consumption in watts */
   power_draw: number
+  /** Maximum power limit in watts */
   power_limit: number
+  /** Total GPU memory in megabytes */
   memory_total: number
+  /** Currently used GPU memory in megabytes */
   memory_used: number
+  /** Current GPU utilization as a percentage (0-100) */
   gpu_utilization: number
+  /** Current GPU temperature in Celsius */
   temperature: number
+  /** Highest recorded temperature in Celsius since last reset */
   peak_temperature: number
+  /** Rate of temperature change in degrees Celsius per second */
   temp_change_rate: number
+  /** Current compute mode of the GPU (e.g., 'Default', 'Exclusive Process') */
   compute_mode: string
 }
 
+/**
+ * Metrics related to GPU stress testing/burn-in operations
+ * @interface GPUBurnMetrics
+ */
 interface GPUBurnMetrics {
+  /** Indicates if a GPU stress test is currently running */
   running: boolean
+  /** Duration of the current/last stress test in seconds */
   duration: number
+  /** Number of errors encountered during stress testing */
   errors: number
 }
 
+/**
+ * Comprehensive GPU system information including all GPUs and system-wide metrics
+ * @interface GPUData
+ */
 interface GPUData {
+  /** Array of information for each GPU in the system */
   gpus: GPUInfo[]
+  /** System-wide NVIDIA driver information */
   nvidia_info: {
+    /** Installed NVIDIA driver version */
     driver_version: string
+    /** Installed CUDA version */
     cuda_version: string
   }
+  /** List of processes currently using GPU resources */
   processes: any[]
+  /** Metrics from GPU stress testing */
   gpu_burn_metrics: GPUBurnMetrics
+  /** Indicates if the data was retrieved successfully */
   success: boolean
 }
 
+/**
+ * Theme configuration for the application's color scheme
+ * @interface ThemeColors
+ */
 interface ThemeColors {
+  /** Main background color of the application */
   background: string
+  /** Background color for GPU info cards */
   cardBackground: string
+  /** Primary text color */
   text: string
+  /** Secondary/supplementary text color */
   subtext: string
+  /** Border color for UI elements */
   border: string
+  /** Background color for progress bar tracks */
   progressBackground: string
+  /** Indicates if dark theme is active */
   isDark: boolean
 }
 
