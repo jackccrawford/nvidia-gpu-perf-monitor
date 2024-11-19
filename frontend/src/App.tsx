@@ -126,37 +126,66 @@ function App() {
     return <div>Loading...</div>
   }
 
-  const getUtilizationColor = (utilization: number, theme: ThemeColors): string => {
-    // ADA-compliant colors with good contrast ratios
-    if (utilization >= 80) return theme.isDark ? '#FF6B6B' : '#D32F2F' // Red
-    if (utilization >= 60) return theme.isDark ? '#FFA94D' : '#F57C00' // Orange
-    if (utilization >= 40) return theme.isDark ? '#51CF66' : '#2E7D32' // Green
-    return theme.isDark ? '#339AF0' : '#1976D2' // Blue
+  const getColorScheme = (isDark: boolean) => ({
+    critical: {
+      light: '#DC2626', // deep red (visible on white)
+      dark: '#FF6B6B'   // lighter red (visible on dark)
+    },
+    warning: {
+      light: '#EA580C', // deep orange
+      dark: '#FFA94D'   // lighter orange
+    },
+    caution: {
+      light: '#CA8A04', // deep yellow-orange
+      dark: '#FFD43B'   // lighter yellow
+    },
+    good: {
+      light: '#16A34A', // deep green
+      dark: '#51CF66'   // lighter green
+    },
+    ideal: {
+      light: '#2563EB', // deep blue
+      dark: '#339AF0'   // lighter blue
+    }
+  });
+
+  const getMetricColor = (value: number, theme: ThemeColors): string => {
+    const colors = getColorScheme(theme.isDark);
+    if (value >= 90) return theme.isDark ? colors.critical.dark : colors.critical.light;
+    if (value >= 75) return theme.isDark ? colors.warning.dark : colors.warning.light;
+    if (value >= 50) return theme.isDark ? colors.caution.dark : colors.caution.light;
+    if (value >= 25) return theme.isDark ? colors.good.dark : colors.good.light;
+    return theme.isDark ? colors.ideal.dark : colors.ideal.light;
   }
 
-  const getTemperatureColor = (temp: number, theme: ThemeColors): string => {
-    // Traffic light system based on real GPU operating ranges
-    if (temp >= 85) return theme.isDark ? '#FF6B6B' : '#D32F2F'      // Red: Danger zone (>85°C)
-    if (temp >= 80) return theme.isDark ? '#FFA94D' : '#F57C00'      // Orange: Warning (80-84°C)
-    if (temp >= 70) return theme.isDark ? '#FFD43B' : '#FFC107'      // Yellow: Normal gaming temp (70-79°C)
-    if (temp >= 65) return theme.isDark ? '#51CF66' : '#2E7D32'      // Green: Ideal temp (65-69°C)
-    if (temp >= 50) return theme.isDark ? '#339AF0' : '#1976D2'      // Blue: Cool (50-64°C)
-    return theme.isDark ? '#748FFC' : '#3F51B5'                      // Indigo: Very cool (<50°C)
+  const getTemperatureColor = (temp: number): string => {
+    const colors = getColorScheme(theme.isDark);
+    if (temp >= 80) return theme.isDark ? colors.critical.dark : colors.critical.light;
+    if (temp >= 70) return theme.isDark ? colors.warning.dark : colors.warning.light;
+    if (temp >= 60) return theme.isDark ? colors.caution.dark : colors.caution.light;
+    if (temp >= 50) return theme.isDark ? colors.good.dark : colors.good.light;
+    return theme.isDark ? colors.ideal.dark : colors.ideal.light;
+  }
+
+  const getUtilizationColor = (utilization: number, theme: ThemeColors): string => {
+    return getMetricColor(utilization, theme);
   }
 
   const getFanSpeedColor = (speed: number, theme: ThemeColors): string => {
-    // ADA-compliant colors with good contrast ratios
-    if (speed >= 80) return theme.isDark ? '#FF6B6B' : '#D32F2F'
-    if (speed >= 60) return theme.isDark ? '#FFA94D' : '#F57C00'
-    if (speed >= 40) return theme.isDark ? '#51CF66' : '#2E7D32'
-    return theme.isDark ? '#339AF0' : '#1976D2'
+    const colors = getColorScheme(theme.isDark);
+    if (speed > 80) return theme.isDark ? colors.critical.dark : colors.critical.light;
+    if (speed > 65) return theme.isDark ? colors.warning.dark : colors.warning.light;
+    if (speed > 50) return theme.isDark ? colors.caution.dark : colors.caution.light;
+    if (speed > 35) return theme.isDark ? colors.good.dark : colors.good.light;
+    return theme.isDark ? colors.ideal.dark : colors.ideal.light;
   }
 
   const getTemperatureIcon = (rate: number): { icon: string; color: string } => {
+    const colors = getColorScheme(theme.isDark);
     if (Math.abs(rate) < 1.0) return { icon: '', color: theme.text };
     return rate > 0 
-      ? { icon: '⌃', color: '#ff4444' }
-      : { icon: '⌄', color: '#44ff44' };
+      ? { icon: '⌃', color: theme.isDark ? colors.critical.dark : colors.critical.light }  // Rising temp
+      : { icon: '⌄', color: theme.isDark ? colors.good.dark : colors.good.light };         // Falling temp
   }
 
   return (
@@ -427,7 +456,7 @@ function App() {
                     <div style={{
                       width: `${Math.min((gpu.temperature / 100) * 100, 100)}%`,
                       height: '100%',
-                      backgroundColor: getTemperatureColor(gpu.temperature, theme),
+                      backgroundColor: getTemperatureColor(gpu.temperature),
                       transition: 'all 0.3s ease-in-out',
                       position: 'relative'
                     }}>
@@ -451,7 +480,7 @@ function App() {
                     gap: '8px'
                   }}>
                     <span style={{ 
-                      color: getTemperatureColor(gpu.temperature, theme),
+                      color: getTemperatureColor(gpu.temperature),
                       fontSize: '1.1em',
                       fontWeight: 500,
                       display: 'flex',
