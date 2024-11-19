@@ -9,14 +9,14 @@ echo "📋 Checking for existing processes..."
 FRONTEND_PID=$(lsof -t -i:5173)
 if [ ! -z "$FRONTEND_PID" ]; then
     echo "🛑 Stopping frontend server (PID: $FRONTEND_PID)..."
-    kill -9 $FRONTEND_PID
+    kill $FRONTEND_PID
 fi
 
 # Kill backend (Python on port 5000)
 BACKEND_PID=$(lsof -t -i:5000)
 if [ ! -z "$BACKEND_PID" ]; then
     echo "🛑 Stopping backend server (PID: $BACKEND_PID)..."
-    kill -9 $BACKEND_PID
+    kill $BACKEND_PID
 fi
 
 # Small delay to ensure ports are freed

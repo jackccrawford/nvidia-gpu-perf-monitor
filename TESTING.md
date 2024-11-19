@@ -144,6 +144,19 @@
 3. Proper CORS configuration
 4. No client-side vulnerabilities detected
 
+## Recent Testing Efforts
+
+### Frontend Polling Mechanism
+- Enhanced logging to track fetch operation timing and identify potential delays.
+- Improved error handling to capture detailed error information during data fetching.
+- Verified consistent polling intervals and resolved intermittent refresh issues.
+
+### Service Management Scripts
+- Updated `restart.sh` and `stop_servers.sh` for graceful shutdown and reliable service management.
+- Tested script functionality to ensure correct stopping and restarting of services.
+
+These efforts have improved the stability and reliability of the application.
+
 ## Test Environment
 - OS: Linux
 - Node.js: v16.20.2

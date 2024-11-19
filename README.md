@@ -2,7 +2,10 @@
 
 > "Information should not be displayed all at once; let people gradually become familiar with it." - Edward Tufte
 
-Tired of playing "Find the Important Number" in your terminal while your ML model trains? Watching your GPU temperature shouldn't feel like decoding the Matrix. 
+Tired of playing "Find the Important Number" in your terminal while your ML model trains? Watching your GPU temperature shouldn't feel like decoding the Matrix.
+
+![Dark Mode Under Stress Test](images/DarkMode-Stressed.png)
+*Transform complex GPU metrics into intuitive visual patterns*
 
 Do you find yourself:
 - Constantly switching between terminal windows?
@@ -11,12 +14,23 @@ Do you find yourself:
 - Wondering if that temperature is actually concerning?
 - Spending mental energy parsing dense data when you should be focusing on your work?
 
+
+### Stacked view of GPU Perf Monitor and nvidia-smi
+<video width="600" controls allowfullscreen>
+  <source src="images/Nvidia-GPU-Monitor-02.webm" type="video/webm">
+  Your browser does not support the video tag.
+</video>
+
 We've reimagined GPU monitoring with human-centered design principles. Instead of parsing dense terminal output, our dashboard leverages intuitive visual affordances - color gradients that immediately signal temperature states, progress bars that show memory usage at a glance, and trend indicators that make pattern recognition effortless.
 
 This beautiful, real-time GPU monitoring dashboard transforms complex metrics into an intuitive interface. Built with React and Flask, it reduces cognitive load through thoughtful information hierarchy and visual signifiers, letting you focus on your work while maintaining awareness of your GPU's health.
 
-![Dark Mode Under Stress Test](images/DarkMode-Stressed.png)
-*Transform complex GPU metrics into intuitive visual patterns*
+## More video and images under various scenarios
+
+<video width="600" controls allowfullscreen>
+  <source src="images/Nvidia-GPU-Monitor-01.webm" type="video/webm">
+  Your browser does not support the video tag.
+</video>
 
 Key Design Principles:
 - Reduced Cognitive Load: Visual patterns over dense numbers
@@ -85,7 +99,7 @@ Key Design Principles:
    ```bash
    ./restart.sh
    ```
-   
+
    The `restart.sh` script handles:
    - Stopping any existing instances of the frontend and backend services
    - Starting the Flask backend server
@@ -104,6 +118,31 @@ Key Design Principles:
    cd frontend
    npm run dev
    ```
+
+## Service Management Scripts
+
+The project includes scripts for managing the frontend and backend services:
+
+- **restart.sh**: Restarts both the frontend and backend services with a graceful shutdown method, ensuring reliable operation.
+- **stop_servers.sh**: Stops the services gracefully, freeing up ports and ensuring no residual processes remain.
+
+These scripts are designed for development use and may require adjustments for production environments.
+
+## Frontend Polling Mechanism
+
+The frontend application uses a polling mechanism to fetch GPU statistics at regular intervals. Recent improvements include:
+
+- Enhanced logging to track fetch operation timing and identify potential delays.
+- Improved error handling to capture detailed error information during data fetching.
+
+## Testing and Debugging
+
+Recent efforts focused on resolving an intermittent refresh issue in the frontend. Key actions included:
+
+- Adding detailed console logging to monitor API calls and responses.
+- Verifying backend API response consistency and improving state management in the React component.
+
+These changes have stabilized the application's performance, ensuring accurate and timely GPU monitoring.
 
 ## Usage Examples
 

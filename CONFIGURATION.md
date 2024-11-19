@@ -78,6 +78,17 @@ Available refresh rates:
   - Fan speed indicator
   - Power consumption metrics
 
+## Updated Configuration
+
+### Frontend Enhancements
+- **Polling Mechanism**: Improved logging and error handling for consistent data fetching.
+- **Theme Settings**: ADA-compliant color schemes for both light and dark modes.
+
+### Backend Updates
+- **Service Management**: Enhanced scripts for starting and stopping services with graceful shutdown.
+
+These updates ensure the application runs efficiently and provides accurate GPU monitoring.
+
 ## Data Persistence
 - Theme preference stored in `localStorage.darkMode`
 - Polling interval stored in `localStorage.pollingInterval`

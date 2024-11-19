@@ -130,17 +130,24 @@ function App() {
   }, [darkMode])
 
   useEffect(() => {
+    console.log('Polling interval set to:', pollingInterval);
     localStorage.setItem('pollingInterval', pollingInterval.toString())
   }, [pollingInterval])
 
   useEffect(() => {
     const fetchData = async () => {
+      const startTime = Date.now();
+      console.log('Fetching GPU stats at:', new Date(startTime).toLocaleTimeString());
       try {
         const response = await fetch('http://localhost:5000/api/gpu-stats')
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
         const jsonData = await response.json()
+        console.log('Response received at:', new Date().toLocaleTimeString(), 'Duration:', Date.now() - startTime, 'ms');
         setData(jsonData)
       } catch (error) {
-        console.error('Error:', error)
+        console.error('Fetch error:', error);
       }
     }
 
