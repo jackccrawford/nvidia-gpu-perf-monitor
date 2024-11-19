@@ -32,17 +32,20 @@ def get_nvidia_info():
                                   capture_output=True, text=True)
         driver_version = driver_cmd.stdout.strip() if driver_cmd.stdout else "Unknown"
 
-        # Get CUDA version separately
-        cuda_cmd = subprocess.run(['nvidia-smi', '--query-gpu=cuda_version', '--format=csv,noheader,nounits'],
-                                capture_output=True, text=True)
-        cuda_version = cuda_cmd.stdout.strip() if cuda_cmd.stdout else "Unknown"
+        # Get CUDA version from the main nvidia-smi output
+        cuda_cmd = subprocess.run(['nvidia-smi'], capture_output=True, text=True)
+        cuda_version = "Unknown"
+        if cuda_cmd.stdout:
+            match = re.search(r'CUDA Version: ([\d\.]+)', cuda_cmd.stdout)
+            if match:
+                cuda_version = match.group(1)
 
         return {
             'driver_version': driver_version.split('\n')[0] if '\n' in driver_version else driver_version,
-            'cuda_version': cuda_version.split('\n')[0] if '\n' in cuda_version else cuda_version
+            'cuda_version': cuda_version
         }
     except Exception as e:
-        print(f"Error getting NVIDIA info: {e}")
+        print(f"Error getting NVIDIA info: {str(e)}")
         return {
             'driver_version': "Unknown",
             'cuda_version': "Unknown"
@@ -55,9 +58,13 @@ def parse_gpu_info():
         # Get GPU info in CSV format for easier parsing
         gpu_info = subprocess.run([
             'nvidia-smi', 
-            '--query-gpu=index,name,fan.speed,power.draw,memory.total,memory.used,utilization.gpu,temperature.gpu,compute_mode,enforced_power_limit',
+            '--query-gpu=index,name,fan.speed,power.draw,memory.total,memory.used,utilization.gpu,temperature.gpu,compute_mode,power.limit',
             '--format=csv,noheader,nounits'
         ], capture_output=True, text=True)
+        
+        # Print debug information
+        print("GPU info command output:", gpu_info.stdout)
+        print("GPU info command error:", gpu_info.stderr)
         
         # Get process info with more details
         process_info = subprocess.run([
@@ -65,51 +72,58 @@ def parse_gpu_info():
             '--query-compute-apps=gpu_uuid,pid,used_memory,name,gpu_name,gpu_bus_id',
             '--format=csv,noheader,nounits'
         ], capture_output=True, text=True)
+        
+        print("Process info command output:", process_info.stdout)
+        print("Process info command error:", process_info.stderr)
 
         gpus = []
         current_time = datetime.now().timestamp()
         
-        for line in gpu_info.stdout.strip().split('\n'):
-            values = [v.strip() for v in line.split(',')]
-            if len(values) >= 10:
-                gpu_index = int(values[0])
-                temperature = float(values[7])
-                
-                # Initialize history for new GPUs
-                if gpu_index not in temperature_history:
-                    temperature_history[gpu_index] = deque(maxlen=3600)  # Store 1 hour of data at 1s intervals
-                
-                # Update temperature history
-                temperature_history[gpu_index].append((current_time, temperature))
-                
-                # Update peak temperature
-                if gpu_index not in peak_temperatures or temperature > peak_temperatures[gpu_index]:
-                    peak_temperatures[gpu_index] = temperature
-                
-                # Calculate temperature change rate (°C/minute)
-                temp_history = temperature_history[gpu_index]
-                temp_change_rate = 0
-                if len(temp_history) >= 2:
-                    time_diff = temp_history[-1][0] - temp_history[0][0]
-                    if time_diff > 0:  # Avoid division by zero
-                        temp_diff = temp_history[-1][1] - temp_history[0][1]
-                        temp_change_rate = (temp_diff / time_diff) * 60  # Convert to per minute
-                
-                gpu_data = {
-                    'index': gpu_index,
-                    'name': values[1].strip(),
-                    'fan_speed': float(values[2]),
-                    'power_draw': float(values[3]),
-                    'power_limit': float(values[9]),
-                    'memory_total': float(values[4]),
-                    'memory_used': float(values[5]),
-                    'gpu_utilization': float(values[6]),
-                    'temperature': temperature,
-                    'peak_temperature': peak_temperatures[gpu_index],
-                    'temp_change_rate': round(temp_change_rate, 2),
-                    'compute_mode': values[8]
-                }
-                gpus.append(gpu_data)
+        # Only try to parse if we have output
+        if gpu_info.stdout.strip():
+            for line in gpu_info.stdout.strip().split('\n'):
+                values = [v.strip() for v in line.split(',')]
+                print(f"Parsing GPU line: {line}")
+                print(f"Split values: {values}")
+                if len(values) >= 10:
+                    gpu_index = int(values[0])
+                    temperature = float(values[7])
+                    
+                    # Initialize history for new GPUs
+                    if gpu_index not in temperature_history:
+                        temperature_history[gpu_index] = deque(maxlen=3600)  # Store 1 hour of data at 1s intervals
+                    
+                    # Update temperature history
+                    temperature_history[gpu_index].append((current_time, temperature))
+                    
+                    # Update peak temperature
+                    if gpu_index not in peak_temperatures or temperature > peak_temperatures[gpu_index]:
+                        peak_temperatures[gpu_index] = temperature
+                    
+                    # Calculate temperature change rate (°C/minute)
+                    temp_history = temperature_history[gpu_index]
+                    temp_change_rate = 0
+                    if len(temp_history) >= 2:
+                        time_diff = temp_history[-1][0] - temp_history[0][0]
+                        if time_diff > 0:  # Avoid division by zero
+                            temp_diff = temp_history[-1][1] - temp_history[0][1]
+                            temp_change_rate = (temp_diff / time_diff) * 60  # Convert to per minute
+                    
+                    gpu_data = {
+                        'index': gpu_index,
+                        'name': values[1].strip(),
+                        'fan_speed': float(values[2]),
+                        'power_draw': float(values[3]),
+                        'power_limit': float(values[9]),
+                        'memory_total': float(values[4]),
+                        'memory_used': float(values[5]),
+                        'gpu_utilization': float(values[6]),
+                        'temperature': temperature,
+                        'peak_temperature': peak_temperatures[gpu_index],
+                        'temp_change_rate': round(temp_change_rate, 2),
+                        'compute_mode': values[8]
+                    }
+                    gpus.append(gpu_data)
 
         # Parse processes with enhanced gpu-burn detection
         processes = []
