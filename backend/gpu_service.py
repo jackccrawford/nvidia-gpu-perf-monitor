@@ -91,7 +91,7 @@ def parse_gpu_info():
                     
                     # Initialize history for new GPUs
                     if gpu_index not in temperature_history:
-                        temperature_history[gpu_index] = deque(maxlen=3600)  # Store 1 hour of data at 1s intervals
+                        temperature_history[gpu_index] = deque(maxlen=40)  # Store 10 seconds of data at 250ms intervals
                     
                     # Update temperature history
                     temperature_history[gpu_index].append((current_time, temperature))
@@ -100,14 +100,28 @@ def parse_gpu_info():
                     if gpu_index not in peak_temperatures or temperature > peak_temperatures[gpu_index]:
                         peak_temperatures[gpu_index] = temperature
                     
-                    # Calculate temperature change rate (°C/minute)
+                    # Calculate temperature change rate using last 10 seconds
                     temp_history = temperature_history[gpu_index]
                     temp_change_rate = 0
                     if len(temp_history) >= 2:
-                        time_diff = temp_history[-1][0] - temp_history[0][0]
-                        if time_diff > 0:  # Avoid division by zero
-                            temp_diff = temp_history[-1][1] - temp_history[0][1]
-                            temp_change_rate = (temp_diff / time_diff) * 60  # Convert to per minute
+                        # Use the most recent measurements for rate calculation
+                        recent_time = temp_history[-1][0] - 10  # Look back 10 seconds
+                        start_temp = None
+                        
+                        # Find the oldest temperature within our 10-second window
+                        for t, temp in temp_history:
+                            if t >= recent_time:
+                                start_temp = temp
+                                break
+                        
+                        if start_temp is not None:
+                            temp_diff = round(temp_history[-1][1]) - round(start_temp)  # Round both temperatures
+                            time_diff = temp_history[-1][0] - recent_time
+                            if time_diff > 0:  # Avoid division by zero
+                                temp_change_rate = (temp_diff / time_diff) * 60  # Convert to per minute
+                                # Only show rate if we have at least a 1 degree change
+                                if abs(temp_diff) < 1:
+                                    temp_change_rate = 0
                     
                     gpu_data = {
                         'index': gpu_index,

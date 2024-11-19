@@ -104,6 +104,24 @@ function App() {
     return () => clearInterval(interval)
   }, [pollingInterval])
 
+  useEffect(() => {
+    const pulseAnimation = `
+      @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+      }
+    `
+
+    const styleSheet = document.createElement('style')
+    styleSheet.textContent = pulseAnimation
+    document.head.appendChild(styleSheet)
+
+    return () => {
+      document.head.removeChild(styleSheet)
+    }
+  }, [])
+
   if (!data) {
     return <div>Loading...</div>
   }
@@ -132,6 +150,13 @@ function App() {
     if (speed >= 60) return theme.isDark ? '#FFA94D' : '#F57C00'
     if (speed >= 40) return theme.isDark ? '#51CF66' : '#2E7D32'
     return theme.isDark ? '#339AF0' : '#1976D2'
+  }
+
+  const getTemperatureIcon = (rate: number): { icon: string; color: string } => {
+    if (Math.abs(rate) < 1.0) return { icon: '', color: theme.text };
+    return rate > 0 
+      ? { icon: '⌃', color: '#ff4444' }
+      : { icon: '⌄', color: '#44ff44' };
   }
 
   return (
@@ -165,7 +190,7 @@ function App() {
             flexWrap: 'wrap',
             alignItems: 'center'
           }}>
-            <span style={{
+            <span style={{ 
               padding: '2px 6px',
               backgroundColor: theme.cardBackground,
               border: `1px solid ${theme.border}`,
@@ -177,7 +202,7 @@ function App() {
               <span style={{ color: theme.subtext }}>Driver:</span>
               {data.nvidia_info.driver_version}
             </span>
-            <span style={{
+            <span style={{ 
               padding: '2px 6px',
               backgroundColor: theme.cardBackground,
               border: `1px solid ${theme.border}`,
@@ -264,7 +289,8 @@ function App() {
                 <span style={{ 
                   fontSize: '0.9rem', 
                   padding: '3px 8px', 
-                  backgroundColor: theme.progressBackground,
+                  backgroundColor: theme.cardBackground,
+                  border: `1px solid ${theme.border}`,
                   borderRadius: '4px',
                   color: theme.subtext
                 }}>
@@ -273,7 +299,8 @@ function App() {
                 <span style={{ 
                   fontSize: '0.9rem', 
                   padding: '3px 8px', 
-                  backgroundColor: theme.progressBackground,
+                  backgroundColor: theme.cardBackground,
+                  border: `1px solid ${theme.border}`,
                   borderRadius: '4px',
                   color: theme.subtext
                 }}>
@@ -363,8 +390,22 @@ function App() {
                   <div style={{ 
                     marginTop: '4px', 
                     textAlign: 'right',
-                    color: getUtilizationColor((gpu.memory_used / gpu.memory_total) * 100, theme)
-                  }}>{gpu.memory_used}MB / {gpu.memory_total}MB</div>
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <span style={{
+                      color: getUtilizationColor((gpu.memory_used / gpu.memory_total) * 100, theme)
+                    }}>
+                      {(gpu.memory_used / 1024).toFixed(1)}GB
+                    </span>
+                    <span style={{
+                      color: theme.subtext
+                    }}>
+                      / {(gpu.memory_total / 1024).toFixed(1)}GB
+                    </span>
+                  </div>
                 </div>
 
                 <div style={{ flex: '1', minWidth: '150px' }}>
@@ -412,32 +453,37 @@ function App() {
                     <span style={{ 
                       color: getTemperatureColor(gpu.temperature, theme),
                       fontSize: '1.1em',
-                      fontWeight: 500
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
                     }}>
-                      {gpu.temperature}°C
+                      {Math.abs(gpu.temp_change_rate) >= 1.0 && (
+                        <span style={{ 
+                          color: getTemperatureIcon(gpu.temp_change_rate).color,
+                          fontSize: '1.5em',
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          marginRight: '2px'
+                        }}>
+                          {getTemperatureIcon(gpu.temp_change_rate).icon}
+                        </span>
+                      )}
+                      {Math.round(gpu.temperature)}°C
                     </span>
                     <span style={{ 
                       color: theme.subtext,
-                      fontSize: '0.9em'
+                      fontSize: '1.0em'
                     }}>
                       / {Math.round(gpu.temperature * 9/5 + 32)}°F
                     </span>
-                    {gpu.temp_change_rate !== 0 && (
-                      <span style={{
-                        color: gpu.temp_change_rate > 0 ? '#ff4444' : '#44ff44',
-                        fontSize: '0.9em'
-                      }}>
-                        ({gpu.temp_change_rate > 0 ? '+' : ''}{gpu.temp_change_rate}°C/min)
-                      </span>
-                    )}
-                    {gpu.peak_temperature > gpu.temperature && (
-                      <span style={{
-                        color: getTemperatureColor(gpu.peak_temperature, theme),
-                        fontSize: '0.8em'
-                      }}>
-                        Peak: {gpu.peak_temperature}°C
-                      </span>
-                    )}
+                    <div style={{ 
+                      fontSize: '1.0rem', 
+                      color: theme.subtext 
+                    }}>
+                      Peak: {gpu.peak_temperature}°C
+                    </div>
                   </div>
                 </div>
 
@@ -574,13 +620,3 @@ function App() {
 }
 
 export default App
-
-<style>
-  {`
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
-  `}
-</style>
