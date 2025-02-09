@@ -1,0 +1,10 @@
+{
+  "name": "nvidia-gpu-perf-monitor",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {},
+  "dependencies": {
+    "flask": "^0.2.10",
+    "vite": "^6.0.11"
+  }
+}
