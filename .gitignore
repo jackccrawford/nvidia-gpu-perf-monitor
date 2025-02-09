@@ -39,6 +39,17 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# TypeScript
+*.tsbuildinfo
+.vite/
+node_modules/.vite/
+node_modules/.package-lock.json
+
+# Vite
+*.local
+dist-ssr/
+.vite/
+
 # Emoji backup file - used to preserve emojis during README edits
 README.emoji.md
 
@@ -49,3 +60,7 @@ README.emoji.md
 *.swo
 .DS_Store
 Thumbs.db
+
+# Logs and PIDs
+*.log
+*.pid
