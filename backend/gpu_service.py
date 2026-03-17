@@ -3,319 +3,218 @@
 """
 NVIDIA GPU Monitoring Service
 
-This Flask-based service provides real-time GPU metrics through a RESTful API.
-It monitors NVIDIA GPUs using the nvidia-smi tool and exposes the following endpoints:
+FastAPI-based service providing real-time GPU metrics via a RESTful API.
+Uses pynvml for direct NVIDIA driver access (no subprocess spawning).
 
 Endpoints:
-    GET /api/gpu-stats - Returns current GPU statistics including:
-        - Temperature, fan speed, and utilization metrics
-        - Memory usage and power consumption
-        - Process information for each GPU
-        - Temperature history and trends
-        - Peak temperature records
-        - GPU burn test metrics (if applicable)
-
-    POST /api/reset-peaks - Resets the recorded peak temperatures
-
-Security:
-    - CORS is enabled to allow cross-origin requests from the frontend
-    - No authentication required (intended for local network use only)
-
-Dependencies:
-    - nvidia-smi command-line tool
-    - NVIDIA drivers properly installed
-    - Flask and flask-cors packages
-
-Data Structures:
-    temperature_history : dict
-        Keys: GPU index (int)
-        Values: deque of (timestamp, temperature) tuples
-        Purpose: Tracks temperature changes over time for trend analysis
-        Max Length: 40 entries (10 seconds at 250ms intervals)
-
-    peak_temperatures : dict
-        Keys: GPU index (int)
-        Values: highest recorded temperature (float)
-        Purpose: Maintains high-water marks for each GPU
-        Reset: Via /api/reset-peaks endpoint
-
-    gpu_burn_metrics : dict
-        Keys: 'start_time', 'errors_detected', 'total_time'
-        Purpose: Tracks GPU stress test metrics
-        Reset: Errors reset via /api/reset-peaks endpoint
+    GET /api/gpu-stats    - Current GPU statistics
+    POST /api/reset-peaks - Reset peak temperature records
 """
 
-from flask import Flask, jsonify
-from flask_cors import CORS
-import subprocess
-import json
-import re
+import logging
 from collections import deque
+from contextlib import asynccontextmanager
 from datetime import datetime
-import threading
-import time
+from typing import Any
 
-app = Flask(__name__)
-CORS(app)
+import pynvml
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-# Temperature history for each GPU
-# Format: {gpu_index: deque([(timestamp, temp), ...], maxlen=40)}
-temperature_history = {}
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
-# Peak temperature tracking
-# Format: {gpu_index: highest_recorded_temperature}
-peak_temperatures = {}
+# Temperature history: {gpu_index: deque([(timestamp, temp), ...], maxlen=40)}
+temperature_history: dict[int, deque] = {}
 
-# GPU burn test metrics
-# Format: {start_time: float, errors_detected: int, total_time: float}
-gpu_burn_metrics = {
-    'start_time': None,
-    'errors_detected': 0,
-    'total_time': 0
+# Peak temperature tracking: {gpu_index: highest_temp}
+peak_temperatures: dict[int, float] = {}
+
+# GPU burn test state
+gpu_burn_state: dict[str, Any] = {
+    "start_time": None,
+    "errors_detected": 0,
+    "total_time": 0.0,
 }
 
-def get_nvidia_info():
-    """
-    Retrieves NVIDIA driver and CUDA version information.
 
-    Uses nvidia-smi to query the system for driver and CUDA versions.
-    Handles potential errors gracefully by returning "Unknown" for missing information.
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    pynvml.nvmlInit()
+    logger.info("pynvml initialized")
+    yield
+    pynvml.nvmlShutdown()
+    logger.info("pynvml shutdown")
 
-    Returns:
-        dict: A dictionary containing:
-            - driver_version (str): NVIDIA driver version (e.g., "535.183.01")
-            - cuda_version (str): CUDA version (e.g., "12.2")
-                                Returns "Unknown" if information cannot be retrieved
-    """
+
+app = FastAPI(title="NVIDIA GPU Monitor", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
+
+class ResetResponse(BaseModel):
+    success: bool
+
+
+def _get_system_info() -> dict[str, str]:
     try:
-        # Get NVIDIA driver version
-        driver_cmd = subprocess.run(['nvidia-smi', '--query-gpu=driver_version', '--format=csv,noheader,nounits'], 
-                                  capture_output=True, text=True)
-        driver_version = driver_cmd.stdout.strip() if driver_cmd.stdout else "Unknown"
+        driver_version = pynvml.nvmlSystemGetDriverVersion()
+        cuda_version_raw = pynvml.nvmlSystemGetCudaDriverVersion()
+        major = cuda_version_raw // 1000
+        minor = (cuda_version_raw % 1000) // 10
+        cuda_version = f"{major}.{minor}"
+        return {"driver_version": driver_version, "cuda_version": cuda_version}
+    except pynvml.NVMLError as e:
+        logger.warning("Could not retrieve system info: %s", e)
+        return {"driver_version": "Unknown", "cuda_version": "Unknown"}
 
-        # Get CUDA version from the main nvidia-smi output
-        cuda_cmd = subprocess.run(['nvidia-smi'], capture_output=True, text=True)
-        cuda_version = "Unknown"
-        if cuda_cmd.stdout:
-            match = re.search(r'CUDA Version: ([\d\.]+)', cuda_cmd.stdout)
-            if match:
-                cuda_version = match.group(1)
 
-        return {
-            'driver_version': driver_version.split('\n')[0] if '\n' in driver_version else driver_version,
-            'cuda_version': cuda_version
+def _get_processes() -> list[dict]:
+    """Collect running compute processes across all GPUs."""
+    processes = []
+    device_count = pynvml.nvmlDeviceGetCount()
+    for i in range(device_count):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+        try:
+            procs = pynvml.nvmlDeviceGetComputeRunningProcesses(handle)
+        except pynvml.NVMLError:
+            continue
+        for proc in procs:
+            try:
+                name = pynvml.nvmlSystemGetProcessName(proc.pid)
+            except pynvml.NVMLError:
+                name = "Unknown"
+            if name.lower() == "unknown":
+                continue
+            processes.append(
+                {
+                    "gpu_index": i,
+                    "pid": proc.pid,
+                    "used_memory": proc.usedGpuMemory / (1024 * 1024),  # bytes -> MiB
+                    "name": name,
+                }
+            )
+    return processes
+
+
+def _collect_gpu_stats() -> dict:
+    nvidia_info = _get_system_info()
+    device_count = pynvml.nvmlDeviceGetCount()
+    current_time = datetime.now().timestamp()
+    gpus = []
+
+    for i in range(device_count):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+
+        name = pynvml.nvmlDeviceGetName(handle)
+        temperature = float(pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU))
+        fan_speed = float(pynvml.nvmlDeviceGetFanSpeed(handle))
+        power_draw = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0  # mW -> W
+        power_limit = pynvml.nvmlDeviceGetEnforcedPowerLimit(handle) / 1000.0  # mW -> W
+        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        memory_total = mem_info.total / (1024 * 1024)  # bytes -> MiB
+        memory_used = mem_info.used / (1024 * 1024)
+        util = pynvml.nvmlDeviceGetUtilizationRates(handle)
+        gpu_utilization = float(util.gpu)
+
+        compute_mode_id = pynvml.nvmlDeviceGetComputeMode(handle)
+        compute_mode_map = {
+            pynvml.NVML_COMPUTEMODE_DEFAULT: "Default",
+            pynvml.NVML_COMPUTEMODE_EXCLUSIVE_THREAD: "Exclusive Thread",
+            pynvml.NVML_COMPUTEMODE_PROHIBITED: "Prohibited",
+            pynvml.NVML_COMPUTEMODE_EXCLUSIVE_PROCESS: "Exclusive Process",
         }
-    except Exception as e:
-        print(f"Error getting NVIDIA info: {str(e)}")
-        return {
-            'driver_version': "Unknown",
-            'cuda_version': "Unknown"
-        }
+        compute_mode = compute_mode_map.get(compute_mode_id, "Unknown")
 
-def parse_gpu_info():
-    """
-    Collects and processes comprehensive GPU information.
+        # Temperature history + peak tracking
+        if i not in temperature_history:
+            temperature_history[i] = deque(maxlen=40)
+        temperature_history[i].append((current_time, temperature))
+        if i not in peak_temperatures or temperature > peak_temperatures[i]:
+            peak_temperatures[i] = temperature
 
-    This function:
-    1. Retrieves driver/CUDA versions
-    2. Collects detailed GPU metrics (temperature, memory, utilization, etc.)
-    3. Updates temperature history and peak records
-    4. Calculates temperature change rates
-    5. Formats data for frontend consumption
+        # Temperature change rate (°C/min) over last 10 seconds
+        temp_change_rate = 0.0
+        history = temperature_history[i]
+        if len(history) >= 2:
+            window_start = current_time - 10.0
+            baseline_temp = next(
+                (temp for t, temp in history if t >= window_start), None
+            )
+            if baseline_temp is not None:
+                temp_diff = round(history[-1][1]) - round(baseline_temp)
+                time_diff = history[-1][0] - window_start
+                if time_diff > 0 and abs(temp_diff) >= 1:
+                    temp_change_rate = round((temp_diff / time_diff) * 60, 2)
 
-    GPU Metrics Collected:
-        - Index and Name
-        - Fan Speed (%)
-        - Power Usage (W)
-        - Memory Usage (MiB)
-        - GPU Utilization (%)
-        - Temperature (°C)
-        - Compute Mode
-        - Temperature History
-        - Peak Temperature
+        gpus.append(
+            {
+                "index": i,
+                "name": name,
+                "fan_speed": fan_speed,
+                "power_draw": round(power_draw, 1),
+                "power_limit": round(power_limit, 1),
+                "memory_total": memory_total,
+                "memory_used": memory_used,
+                "gpu_utilization": gpu_utilization,
+                "temperature": temperature,
+                "peak_temperature": peak_temperatures[i],
+                "temp_change_rate": temp_change_rate,
+                "compute_mode": compute_mode,
+            }
+        )
 
-    Returns:
-        dict: A dictionary containing:
-            - gpus: List of GPU information dictionaries
-            - nvidia_info: Driver and CUDA versions
-            - processes: List of running compute processes
-            - gpu_burn_metrics: Stress test metrics
-            - success: Boolean indicating successful data collection
-    """
+    processes = _get_processes()
+
+    # GPU burn detection
+    gpu_burn_detected = any("gpu-burn" in p["name"].lower() for p in processes)
+    if gpu_burn_detected:
+        if gpu_burn_state["start_time"] is None:
+            gpu_burn_state["start_time"] = current_time
+        gpu_burn_state["total_time"] = current_time - gpu_burn_state["start_time"]
+    else:
+        gpu_burn_state["start_time"] = None
+        gpu_burn_state["total_time"] = 0.0
+
+    return {
+        "nvidia_info": nvidia_info,
+        "gpus": gpus,
+        "processes": processes,
+        "gpu_burn_metrics": {
+            "running": gpu_burn_detected,
+            "duration": round(gpu_burn_state["total_time"], 1),
+            "errors": gpu_burn_state["errors_detected"],
+        },
+        "success": True,
+    }
+
+
+@app.get("/api/gpu-stats")
+async def get_gpu_stats():
     try:
-        nvidia_info = get_nvidia_info()
-        
-        # Get GPU info in CSV format for easier parsing
-        gpu_info = subprocess.run([
-            'nvidia-smi', 
-            '--query-gpu=index,name,fan.speed,power.draw,memory.total,memory.used,utilization.gpu,temperature.gpu,compute_mode,power.limit',
-            '--format=csv,noheader,nounits'
-        ], capture_output=True, text=True)
-        
-        # Print debug information
-        print("GPU info command output:", gpu_info.stdout)
-        print("GPU info command error:", gpu_info.stderr)
-        
-        # Get ALL process info (both compute and graphics)
-        process_info = subprocess.run([
-            'nvidia-smi', 
-            '--query-process=gpu_uuid,pid,used_memory,name',  # Changed to --query-process
-            '--format=csv,noheader,nounits'
-        ], capture_output=True, text=True)
-        
-        print("Process info command output:", process_info.stdout)
-        print("Process info command error:", process_info.stderr)
-
-        gpus = []
-        current_time = datetime.now().timestamp()
-        
-        # Only try to parse if we have output
-        if gpu_info.stdout.strip():
-            for line in gpu_info.stdout.strip().split('\n'):
-                values = [v.strip() for v in line.split(',')]
-                print(f"Parsing GPU line: {line}")
-                print(f"Split values: {values}")
-                if len(values) >= 10:
-                    gpu_index = int(values[0])
-                    temperature = float(values[7])
-                    
-                    # Initialize history for new GPUs
-                    if gpu_index not in temperature_history:
-                        temperature_history[gpu_index] = deque(maxlen=40)  # Store 10 seconds of data at 250ms intervals
-                    
-                    # Update temperature history
-                    temperature_history[gpu_index].append((current_time, temperature))
-                    
-                    # Update peak temperature
-                    if gpu_index not in peak_temperatures or temperature > peak_temperatures[gpu_index]:
-                        peak_temperatures[gpu_index] = temperature
-                    
-                    # Calculate temperature change rate using last 10 seconds
-                    temp_history = temperature_history[gpu_index]
-                    temp_change_rate = 0
-                    if len(temp_history) >= 2:
-                        # Use the most recent measurements for rate calculation
-                        recent_time = temp_history[-1][0] - 10  # Look back 10 seconds
-                        start_temp = None
-                        
-                        # Find the oldest temperature within our 10-second window
-                        for t, temp in temp_history:
-                            if t >= recent_time:
-                                start_temp = temp
-                                break
-                        
-                        if start_temp is not None:
-                            temp_diff = round(temp_history[-1][1]) - round(start_temp)  # Round both temperatures
-                            time_diff = temp_history[-1][0] - recent_time
-                            if time_diff > 0:  # Avoid division by zero
-                                temp_change_rate = (temp_diff / time_diff) * 60  # Convert to per minute
-                                # Only show rate if we have at least a 1 degree change
-                                if abs(temp_diff) < 1:
-                                    temp_change_rate = 0
-                    
-                    gpu_data = {
-                        'index': gpu_index,
-                        'name': values[1].strip(),
-                        'fan_speed': float(values[2]),
-                        'power_draw': float(values[3]),
-                        'power_limit': float(values[9]),
-                        'memory_total': float(values[4]),
-                        'memory_used': float(values[5]),
-                        'gpu_utilization': float(values[6]),
-                        'temperature': temperature,
-                        'peak_temperature': peak_temperatures[gpu_index],
-                        'temp_change_rate': round(temp_change_rate, 2),
-                        'compute_mode': values[8]
-                    }
-                    gpus.append(gpu_data)
-
-        # Parse processes with enhanced gpu-burn detection
-        processes = []
-        gpu_burn_detected = False
-        process_lines = process_info.stdout.strip().split('\n')
-        if process_lines and 'pid' in process_lines[0].lower():
-            process_lines = process_lines[1:]
-        
-        for line in process_lines:
-            if line:  # Skip empty lines
-                values = [v.strip() for v in line.split(',')]
-                if len(values) >= 4:
-                    process_name = values[3].lower()
-                    if 'gpu-burn' in process_name:
-                        gpu_burn_detected = True
-                        if gpu_burn_metrics['start_time'] is None:
-                            gpu_burn_metrics['start_time'] = current_time
-                    
-                    # Include all processes without filtering
-                    process = {
-                        'gpu_uuid': values[0],
-                        'pid': int(values[1]),
-                        'used_memory': float(values[2]),
-                        'name': values[3]
-                    }
-                    processes.append(process)
-
-        # Update gpu-burn metrics
-        if gpu_burn_detected and gpu_burn_metrics['start_time'] is not None:
-            gpu_burn_metrics['total_time'] = current_time - gpu_burn_metrics['start_time']
-        elif not gpu_burn_detected:
-            gpu_burn_metrics['start_time'] = None
-            gpu_burn_metrics['total_time'] = 0
-
-        return {
-            'nvidia_info': nvidia_info,
-            'gpus': gpus,
-            'processes': processes,
-            'gpu_burn_metrics': {
-                'running': gpu_burn_detected,
-                'duration': round(gpu_burn_metrics['total_time'], 1),
-                'errors': gpu_burn_metrics['errors_detected']
-            },
-            'success': True
-        }
+        return _collect_gpu_stats()
+    except pynvml.NVMLError as e:
+        logger.error("NVML error: %s", e)
+        raise HTTPException(status_code=503, detail=f"GPU unavailable: {e}")
     except Exception as e:
-        return {
-            'success': False,
-            'error': str(e)
-        }
+        logger.exception("Unexpected error collecting GPU stats")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/api/gpu-stats')
-def get_gpu_stats():
-    """
-    Flask endpoint that returns current GPU statistics.
 
-    This endpoint:
-    1. Collects current GPU metrics via parse_gpu_info()
-    2. Returns the data in JSON format
-    3. Handles CORS automatically via flask-cors
-
-    Returns:
-        Response: JSON-formatted GPU statistics including:
-            - List of GPU information
-            - NVIDIA driver/CUDA versions
-            - Temperature histories
-            - Peak temperatures
-            - GPU burn metrics
-    """
-    return jsonify(parse_gpu_info())
-
-@app.route('/api/reset-peaks', methods=['POST'])
-def reset_peaks():
-    """
-    Flask endpoint that resets peak temperature records and error counts.
-
-    This endpoint:
-    1. Clears the peak_temperatures dictionary
-    2. Resets GPU burn error counter
-    3. Returns success confirmation
-
-    Returns:
-        Response: JSON confirmation of reset
-            - success: True if reset completed
-    """
+@app.post("/api/reset-peaks", response_model=ResetResponse)
+async def reset_peaks():
     peak_temperatures.clear()
-    gpu_burn_metrics['errors_detected'] = 0
-    return jsonify({'success': True})
+    gpu_burn_state["errors_detected"] = 0
+    return ResetResponse(success=True)
 
-if __name__ == '__main__':
-    app.run(port=5000)
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=5000)
