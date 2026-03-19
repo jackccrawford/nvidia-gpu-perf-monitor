@@ -4,15 +4,6 @@
   <img src="images/DarkMode-Stressed.png" alt="Dashboard dark mode under stress test" width="800">
 </p>
 
-<p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-1.1.0-blue">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
-  <img alt="React" src="https://img.shields.io/badge/react-18.3-61dafb">
-  <img alt="TypeScript" src="https://img.shields.io/badge/typescript-5.5-3178c6">
-  <img alt="FastAPI" src="https://img.shields.io/badge/fastapi-0.111-009688">
-  <img alt="Python" src="https://img.shields.io/badge/python-3.8+-yellow">
-</p>
-
 Real-time NVIDIA GPU monitoring in your browser. Color-coded metrics, temperature trends, and process tracking — no more squinting at `nvidia-smi` output while your model trains.
 
 ---
