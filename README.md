@@ -1,206 +1,141 @@
 # NVIDIA GPU Performance Monitor
 
-> "Information should not be displayed all at once; let people gradually become familiar with it." - Edward Tufte
+<p align="center">
+  <img src="images/DarkMode-Stressed.png" alt="Dashboard dark mode under stress test" width="800">
+</p>
 
-Tired of playing "Find the Important Number" in your terminal while your ML model trains? Watching your GPU temperature shouldn't feel like decoding the Matrix.
-
-![Dark Mode Under Stress Test](images/DarkMode-Stressed.png)
-*Transform complex GPU metrics into intuitive visual patterns*
-
-Do you find yourself:
-- Constantly switching between terminal windows?
-- Squinting at rapidly changing numbers?
-- Missing critical spikes in GPU usage?
-- Wondering if that temperature is actually concerning?
-- Spending mental energy parsing dense data when you should be focusing on your work?
-
-
-### Stacked view of GPU Perf Monitor and nvidia-smi
-<video width="600" controls allowfullscreen>
-  <source src="images/Nvidia-GPU-Monitor-02.webm" type="video/webm">
-  Your browser does not support the video tag.
-</video>
-
-We've reimagined GPU monitoring with human-centered design principles. Instead of parsing dense terminal output, our dashboard leverages intuitive visual affordances - color gradients that immediately signal temperature states, progress bars that show memory usage at a glance, and trend indicators that make pattern recognition effortless.
-
-This beautiful, real-time GPU monitoring dashboard transforms complex metrics into an intuitive interface. Built with React and Flask, it reduces cognitive load through thoughtful information hierarchy and visual signifiers, letting you focus on your work while maintaining awareness of your GPU's health.
-
-## More video and images under various scenarios
-
-<video width="600" controls allowfullscreen>
-  <source src="images/Nvidia-GPU-Monitor-01.webm" type="video/webm">
-  Your browser does not support the video tag.
-</video>
-
-Key Design Principles:
-- Reduced Cognitive Load: Visual patterns over dense numbers
-- Intuitive Signifiers: Color-coding that maps to severity levels
-- Information Hierarchy: Critical metrics prominently displayed
-- Pattern Recognition: Trend visualization for quick analysis
-- Attention Management: Alerts that demand attention only when needed
-
-![Version](https://img.shields.io/badge/version-1.0.0--beta-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![React Version](https://img.shields.io/badge/react-18.2.0-61dafb)
-![TypeScript](https://img.shields.io/badge/typescript-4.9.5-blue)
-![Python](https://img.shields.io/badge/python-3.8+-yellow)
-![Flask](https://img.shields.io/badge/flask-2.0.0-black)
-
-## From Terminal to Visual Intelligence
-
-### The Old Way: Dense Terminal Output
-![Traditional nvidia-smi](images/nvidia-smi.png)
-*Traditional nvidia-smi command line output - dense numbers requiring constant cognitive processing*
-
-### Real-world Usage Examples
-
-#### Machine Learning Workload Monitoring
-![Ollama Running](images/Ollama-Mistral-Small.png)
-*Dashboard showing Ollama running the Mistral-Small model - clear resource utilization*
-
-#### Stress Test Monitoring
-![GPU Burn Test](images/gpu-burn-danger-zone.png)
-*Intensive GPU stress testing with gpu-burn - immediate visual alerts*
-
-#### Mobile-Optimized View
-![Mobile Dark Mode](images/DarkMode-Mobile.png)
-
-*Responsive design automatically adapts to any screen size*
-
-## Tech Stack
-
-- Frontend: React 18, TypeScript, Vite
-- Backend: Python, Flask
-- System Tools:
-  - nvidia-smi
-  - gpu-burn
-  - CUDA Toolkit
-
-## Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/jackccrawford/nvidia-gpu-perf-monitor.git
-   ```
-
-2. Install backend dependencies:
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   ```
-
-3. Install frontend dependencies:
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-4. Start the application:
-   ```bash
-   ./restart.sh
-   ```
-
-   The `restart.sh` script handles:
-   - Stopping any existing instances of the frontend and backend services
-   - Starting the Flask backend server
-   - Starting the React frontend development server
-   - Ensuring proper startup sequence and port availability
-
-   > Pro Tip: Always use `restart.sh` to start/restart the application. It ensures clean startup and proper service coordination.
-
-   If you need to start services manually (not recommended):
-   ```bash
-   # Backend
-   cd backend
-   python gpu_service.py
-
-   # Frontend (in a new terminal)
-   cd frontend
-   npm run dev
-   ```
-
-## Service Management Scripts
-
-The project includes scripts for managing the frontend and backend services:
-
-- **restart.sh**: Restarts both the frontend and backend services with a graceful shutdown method, ensuring reliable operation.
-- **stop_servers.sh**: Stops the services gracefully, freeing up ports and ensuring no residual processes remain.
-
-These scripts are designed for development use and may require adjustments for production environments.
-
-## Frontend Polling Mechanism
-
-The frontend application uses a polling mechanism to fetch GPU statistics at regular intervals. Recent improvements include:
-
-- Enhanced logging to track fetch operation timing and identify potential delays.
-- Improved error handling to capture detailed error information during data fetching.
-
-## Testing and Debugging
-
-Recent efforts focused on resolving an intermittent refresh issue in the frontend. Key actions included:
-
-- Adding detailed console logging to monitor API calls and responses.
-- Verifying backend API response consistency and improving state management in the React component.
-
-These changes have stabilized the application's performance, ensuring accurate and timely GPU monitoring.
-
-## Usage Examples
-
-### Monitoring Machine Learning Workloads
-```python
-# Run your ML training
-python train.py --model large --epochs 100
-```
-Monitor in real-time:
-- GPU utilization during training
-- Memory consumption patterns
-- Temperature trends
-- Process-specific metrics
-
-### Stress Testing
-```bash
-# Run gpu-burn
-./gpu-burn 60  # 1 minute stress test - watch closely!
-```
-Monitor in dashboard:
-- Temperature peaks
-- Error detection
-- Duration tracking
-- Performance metrics
-
- CAUTION: Never run stress tests for extended periods. This can damage your GPU!
-
-## Temperature Monitoring
-
-Color-coded temperature ranges for intuitive monitoring:
-- Red (≥85°C): Danger zone
-- Orange (80-84°C): Warning
-- Yellow (70-79°C): Normal gaming temp
-- Green (65-69°C): Ideal temperature
-- Blue (50-64°C): Cool
-- Indigo (<50°C): Very cool
-
-## Security Notes
-
-- No sensitive data collection
-- Local-only operation
-- Process information filtered
-- Safe subprocess execution
-- Error handling for all operations
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- NVIDIA for nvidia-smi toolkit
-- gpu-burn for stress testing
-- React for frontend framework
-- Flask for backend framework
-- Icons by Heroicons and Phosphor
+Real-time NVIDIA GPU monitoring in your browser. Color-coded metrics, temperature trends, and process tracking — no more squinting at `nvidia-smi` output while your model trains.
 
 ---
 
-<p align="center">Made with for the GPU community</p>
-<p align="center">Developed with assistance by Codeium Windsurf</p>
+## Features
+
+- **Live metrics** — utilization, memory, temperature, fan speed, power draw, updated as fast as 250 ms
+- **Color-coded severity** — instantly know if a value needs attention without reading numbers
+- **Temperature trends** — rising/falling indicators with °C/min rate
+- **Peak tracking** — high-water marks per GPU, resettable on demand
+- **GPU burn detection** — automatic stress-test monitoring with error counting
+- **Process list** — which processes are consuming GPU memory and how much
+- **Dark / light mode** — persisted across sessions
+- **Responsive layout** — works on mobile
+
+## Screenshots
+
+| Stress test (dark) | ML workload | Mobile |
+|---|---|---|
+| ![Stressed dark](images/DarkMode-Stressed.png) | ![Ollama](images/Ollama-Mistral-Small.png) | ![Mobile](images/DarkMode-Mobile.png) |
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18.3, TypeScript 5.5, Vite 5 |
+| Backend | FastAPI, pynvml, uvicorn |
+| GPU access | pynvml (direct NVIDIA driver — no subprocess) |
+| System tools | nvidia-smi, CUDA Toolkit, gpu-burn (optional) |
+
+## Requirements
+
+- NVIDIA GPU with drivers installed
+- Python 3.8+
+- Node.js 18+
+
+## Installation
+
+```bash
+git clone https://github.com/jackccrawford/nvidia-gpu-perf-monitor.git
+cd nvidia-gpu-perf-monitor
+```
+
+**Backend**
+
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+**Frontend**
+
+```bash
+cd frontend
+npm install
+```
+
+## Running
+
+```bash
+# From the project root — starts both services cleanly
+./restart.sh
+```
+
+Then open **http://localhost:5173** in your browser.
+
+| Service | URL |
+|---|---|
+| Dashboard | http://localhost:5173 |
+| API | http://localhost:5000/api/gpu-stats |
+| API docs | http://localhost:5000/docs |
+
+To stop everything:
+
+```bash
+./stop_servers.sh
+```
+
+<details>
+<summary>Manual startup (if needed)</summary>
+
+```bash
+# Terminal 1 — backend
+cd backend
+python gpu_service.py
+
+# Terminal 2 — frontend
+cd frontend
+npm run dev
+```
+
+</details>
+
+## Color reference
+
+Thresholds apply to temperature, utilization, memory, and fan speed (with slightly different breakpoints for each).
+
+| Color | Temperature | Utilization |
+|---|---|---|
+| 🔴 Red | ≥ 80 °C | ≥ 90% |
+| 🟠 Orange | ≥ 70 °C | ≥ 75% |
+| 🟡 Yellow | ≥ 60 °C | ≥ 50% |
+| 🟢 Green | ≥ 50 °C | ≥ 25% |
+| 🔵 Blue | < 50 °C | < 25% |
+
+## API
+
+```
+GET  /api/gpu-stats    — current metrics for all GPUs
+POST /api/reset-peaks  — reset peak temperature records
+```
+
+Interactive docs available at `http://localhost:5000/docs` (FastAPI built-in).
+
+## Stress testing
+
+```bash
+./gpu-burn 60   # 60-second stress test
+```
+
+The dashboard automatically detects `gpu-burn` processes and shows a burn panel with elapsed time and error count.
+
+> **Warning** — do not run stress tests for extended periods. Monitor temperatures closely and stop if you approach thermal limits.
+
+## Security
+
+This tool is intended for local / LAN use only. It does not collect or transmit any data externally. No authentication is configured by default.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+---
+
+<p align="center">Made for the GPU community</p>
